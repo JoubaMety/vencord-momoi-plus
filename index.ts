@@ -14,97 +14,111 @@ function makeRange(start: number, end: number, step: number): number[] {
     return arr;
 }
 
+// Helper function for repetitive regex patterns
+function createKeywordRegex(keyword: string): RegExp {
+    const pattern = `(?::\\w*${keyword}\\w*:)|https?:\\/\\/(?:cdn\\.discordapp\\.com\\/emojis|media\\.discordapp\\.net\\/stickers)\\/\\d+\\.(?:png|webp|gif)\\?[^ ]*name=\\w*${keyword}\\w*`;
+    return new RegExp(pattern, "gi");
+}
+
 // Local type definitions
-type StickerItem = {
-    id: string;
-    name: string;
-    format_type: number;
-};
-type Message = { 
-    id: string; 
-    content: string; 
-    author?: { id: string; bot?: boolean; }; 
-    state?: string; 
-    sticker_items?: StickerItem[];
-};
+type StickerItem = { id: string; name: string; format_type: number; };
+type Message = { id: string; content: string; author?: { id: string; bot?: boolean; }; state?: string; sticker_items?: StickerItem[]; };
 type ReactionEmoji = { id?: string; name: string; animated?: boolean; };
 interface IMessageCreate { type: "MESSAGE_CREATE"; optimistic: boolean; channelId: string; message: Message; }
 interface IReactionAdd { type: "MESSAGE_REACTION_ADD"; optimistic: boolean; channelId: string; userId: string; messageAuthorId: string; emoji: ReactionEmoji; }
 interface IVoiceChannelEffectSendEvent { type: string; emoji?: ReactionEmoji; }
 
-const KEYWORD_REGEX: Record<string, RegExp> = {
-    momoi: /(?::\w*momoi\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*momoi\w*/gi,
-    reisa: /(?::\w*reisa\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*reisa\w*/gi,
-    nozomi: /(?::\w*nozomi\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*nozomi\w*/gi,
-    hikari: /(?::\w*hikari\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*hikari\w*/gi,
-    aoba: /(?::\w*aoba\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*aoba\w*/gi,
-    miyu: /(?::\w*miyu\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*miyu\w*/gi,
-    koyuki: /(?::\w*koyuki\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*koyuki\w*/gi,
-    aris: /(?::\w*aris\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*aris\w*/gi,
-    moyai: /(?::\w*moyai\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*moyai\w*/gi
+// All standard keywords
+const standardKeywords = [ "momoi", "reisa", "nozomi", "hikari", "aoba", "miyu", "koyuki", "aris", "aru", "arona", "atsuko", "mika", "shiroko" ];
+
+// Build the regex map from the list of keywords
+const KEYWORD_REGEX: Record<string, RegExp> = standardKeywords.reduce((acc, keyword) => {
+    acc[keyword] = createKeywordRegex(keyword);
+    return acc;
+}, {} as Record<string, RegExp>);
+
+// Special cases
+KEYWORD_REGEX.moyai = /🗿|(?::\w*moy?ai\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*moy?ai\w*/gi;
+
+const KEYWORD_ALIASES: Record<string, string[]> = {
+    momoi: ["モモイ"], reisa: ["レイサ"], nozomi: ["ノゾミ"], hikari: ["ヒカリ"], aoba: ["アオバ"], miyu: ["ミユ"], koyuki: ["コユキ"], aris: ["アリス"], aru: ["アル"], arona: ["アロナ"], atsuko: ["アツコ"], mika: ["ミカ"], shiroko: ["シロコ"], moyai: ["モアイ", "moai", "🗿"]
 };
 
-// Aliases for keywords, especially for non-English names. 
-const KEYWORD_ALIASES: Record<string, string[]> = {
-    momoi: ["モモイ"],
-    reisa: ["レイサ"],
-    nozomi: ["ノゾミ"],
-    hikari: ["ヒカリ"],
-    aoba: ["アオバ"],
-    miyu: ["ミユ"],
-    koyuki: ["コユキ"],
-    aris: ["アリス"],
-    moyai: ["モアイ"]
-};
+// --- SETTINGS GENERATION ---
+const toggleableKeywords = Object.keys(KEYWORD_REGEX).filter(k => k !== 'momoi');
+const triggerToggles = toggleableKeywords.reduce((acc, keyword) => {
+    const settingKey = `enable${keyword.charAt(0).toUpperCase() + keyword.slice(1)}`;
+    const description = `Enable ${keyword.charAt(0).toUpperCase() + keyword.slice(1)} trigger`;
+    acc[settingKey] = { description: description, type: OptionType.BOOLEAN, default: true };
+    return acc;
+}, {} as Record<string, { description: string, type: OptionType.BOOLEAN, default: boolean }>);
 
 const settings = definePluginSettings({
     volume: { description: "Playback volume", type: OptionType.SLIDER, markers: makeRange(0, 1, 0.1), default: 0.5, stickToMarkers: false },
     voice: { description: "Select Your Momoi", type: OptionType.SELECT, options: [{ label: "Kuyashi", value: "kuyashi", default: true }, { label: "Tasukete", value: "tasukete" }, { label: "Yurusenai", value: "yurusenai" }] },
+    startupSound: {
+        description: "Replace Discord's startup sound",
+        type: OptionType.SELECT,
+        options: [
+            { label: "Don't Replace", value: "none", default: true },
+            { label: "Selected Momoi", value: "momoi" },
+            { label: "Random Sound", value: "random" }
+        ]
+    },
     triggerWhenUnfocused: { description: "Trigger even when unfocused", type: OptionType.BOOLEAN, default: true },
     ignoreBots: { description: "Ignore bot users", type: OptionType.BOOLEAN, default: true },
     ignoreBlocked: { description: "Ignore blocked users", type: OptionType.BOOLEAN, default: true },
-    enableReisa: { description: "Enable Reisa trigger", type: OptionType.BOOLEAN, default: true },
-    enableNozomi: { description: "Enable Nozomi trigger", type: OptionType.BOOLEAN, default: true },
-    enableHikari: { description: "Enable Hikari trigger", type: OptionType.BOOLEAN, default: true },
-    enableAoba: { description: "Enable Aoba trigger", type: OptionType.BOOLEAN, default: true },
-    enableMiyu: { description: "Enable Miyu trigger", type: OptionType.BOOLEAN, default: true },
-    enableKoyuki: { description: "Enable Koyuki trigger", type: OptionType.BOOLEAN, default: true },
-    enableAris: { description: "Enable Aris trigger", type: OptionType.BOOLEAN, default: true },
-    enableMoyai: { description: "Enable Moyai trigger", type: OptionType.BOOLEAN, default: true }
+    ...triggerToggles
 });
 
 const customAuthors: PluginAuthor[] = [{ name: "Ni", id: 1145148101919n }];
+
+// Flatten all audio clips into a single array for random selection
+const ALL_EXTRA_SOUNDS = Object.values(EXTRA_KEYWORD_BASE64).flat();
 
 export default definePlugin({
     name: "MomoiPlus",
     authors: customAuthors,
     description: "Life, is Kuyashi.",
     settings,
+    patches: [{
+        find: "cb85be48267eb1b4.mp3",
+        replacement: {
+            match: /e\.exports=n\.p\+"[a-zA-Z0-9]+\.mp3"/,
+            replace: "e.exports=$self.getStartupSoundBase64()",
+            predicate: () => settings.store.startupSound !== "none"
+        }
+    }],
+    // Reference: https://github.com/JoubaMety/vencord-momoi-plus/commit/15d66176f881b1e72a0adc940d3572287ab8101a#diff-dcdc3e0b3362edb8fec2a51d3fa51f8fb8af8f70247e06d9887fa934834c9122R84
+
+    getStartupSoundBase64(): string {
+        const choice = settings.store.startupSound;
+        let base64String: string | undefined;
+
+        if (choice === "momoi") {
+            const voices = Array.isArray(settings.store.voice) ? settings.store.voice : [settings.store.voice];
+            base64String = voices.map(v => MOMOI_BASE64[v]).filter(Boolean)[0];
+        } else if (choice === "random") {
+            const allMomoiSounds = Object.values(MOMOI_BASE64);
+            const allSounds = [...allMomoiSounds, ...ALL_EXTRA_SOUNDS];
+            const randomIndex = Math.floor(Math.random() * allSounds.length);
+            base64String = allSounds[randomIndex];
+        }
+
+        return base64String ? `data:audio/ogg;base64,${base64String}` : "";
+    },
+
     flux: {
         async MESSAGE_CREATE({ optimistic, message, channelId }: IMessageCreate) {
-            if (optimistic || message.state === "SENDING") return;
-            if (settings.store.ignoreBots && message.author?.bot) return;
-            if (settings.store.ignoreBlocked && RelationshipStore.isBlocked(message.author?.id)) return;
-            if (channelId !== SelectedChannelStore.getChannelId()) return;
-
-            // An empty message can still have stickers, so we check both
-            if (!message.content && !message.sticker_items?.length) return;
+            if (optimistic || message.state === "SENDING" || (settings.store.ignoreBots && message.author?.bot) || (settings.store.ignoreBlocked && RelationshipStore.isBlocked(message.author?.id)) || channelId !== SelectedChannelStore.getChannelId() || (!message.content && !message.sticker_items?.length)) return;
 
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-
                 let matchCount = 0;
-
-                // 1. Check message content for emojis and emoji/sticker URLs
                 if (message.content) {
-                    const regex = KEYWORD_REGEX[key];
-                    const contentMatches = message.content.match(regex);
-                    if (contentMatches) {
-                        matchCount += contentMatches.length;
-                    }
+                    const contentMatches = message.content.match(KEYWORD_REGEX[key]);
+                    if (contentMatches) matchCount += contentMatches.length;
                 }
-
-                // 2. Check sticker names from the dedicated sticker data field
                 if (message.sticker_items) {
                     for (const sticker of message.sticker_items) {
                         const stickerNameLower = sticker.name.toLowerCase();
@@ -114,8 +128,6 @@ export default definePlugin({
                         }
                     }
                 }
-
-                // 3. Play sound for all matches found
                 if (matchCount > 0) {
                     for (let i = 0; i < matchCount; i++) {
                         playKeyword(key);
@@ -125,15 +137,11 @@ export default definePlugin({
             }
         },
         MESSAGE_REACTION_ADD({ optimistic, channelId, userId, messageAuthorId, emoji }: IReactionAdd) {
-            if (optimistic) return;
-            if (settings.store.ignoreBots && UserStore.getUser(userId)?.bot) return;
-            if (settings.store.ignoreBlocked && RelationshipStore.isBlocked(messageAuthorId)) return;
-            if (channelId !== SelectedChannelStore.getChannelId()) return;
-            
+            if (optimistic || (settings.store.ignoreBots && UserStore.getUser(userId)?.bot) || (settings.store.ignoreBlocked && RelationshipStore.isBlocked(messageAuthorId)) || channelId !== SelectedChannelStore.getChannelId()) return;
+
             const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-                
                 const aliases = KEYWORD_ALIASES[key] ?? [];
                 if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
                     playKeyword(key);
@@ -145,7 +153,6 @@ export default definePlugin({
             const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-
                 const aliases = KEYWORD_ALIASES[key] ?? [];
                 if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
                     playKeyword(key);
@@ -155,7 +162,6 @@ export default definePlugin({
     }
 });
 
-// The playback function
 async function playKeyword(key: string) {
     if (!settings.store.triggerWhenUnfocused && !document.hasFocus()) return;
 
@@ -179,14 +185,11 @@ async function playKeyword(key: string) {
             const response = await fetch(dataUrl);
             const blob = await response.blob();
             const blobUrl = URL.createObjectURL(blob);
-
             const audio = document.createElement("audio");
             audio.src = blobUrl;
             audio.volume = settings.store.volume;
-
             audio.onended = () => URL.revokeObjectURL(blobUrl);
             audio.onerror = () => URL.revokeObjectURL(blobUrl);
-
             audio.play();
         } catch (error) {
             console.error(`[MomoiPlus] Error playing Base64 audio for key ${key}:`, error);
