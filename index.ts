@@ -24,6 +24,33 @@ function makeRange(start: number, end: number, step: number): number[] {
     return arr;
 }
 
+// Helper to build a case-insensitive pattern string, e.g., "aris" -> "[aA][rR][iI][sS]"
+function createCaseInsensitivePattern(keyword: string): string {
+    return keyword.split('').map(char => {
+        const lower = char.toLowerCase();
+        const upper = char.toUpperCase();
+        return lower === upper ? char : `[${lower}${upper}]`;
+    }).join('');
+}
+
+// Helper function to check for whole-word matches in names, respecting camelCase and underscores.
+function nameMatchesKeyword(name: string, keyword: string, aliases: string[]): boolean {
+    const allTerms = [keyword, ...aliases.map(a => a.toLowerCase())];
+    const nameLower = name.toLowerCase();
+
+    for (const term of allTerms) {
+        let startIndex = -1;
+        while ((startIndex = nameLower.indexOf(term, startIndex + 1)) !== -1) {
+            const beforeOk = startIndex === 0 || !/[a-z]/.test(name[startIndex - 1]);
+            const afterIndex = startIndex + term.length;
+            const afterOk = afterIndex === name.length || !/[a-z]/.test(name[afterIndex]);
+
+            if (beforeOk && afterOk) return true;
+        }
+    }
+    return false;
+}
+
 
 // Local type definitions
 type StickerItem = { id: string; name: string; format_type: number; };
@@ -56,12 +83,11 @@ export const settings = definePluginSettings({
     },
 });
 
+// --- PLUGIN DEFINITION ---
 const customAuthors: PluginAuthor[] = [
     { name: "Ni", id: 1145148101919n },
     { name: "JoubaMety", id: 266528098772713474n }
 ];
-
-// Flatten all audio clips into a single array for random selection
 const ALL_EXTRA_SOUNDS = Object.values(EXTRA_KEYWORD_BASE64).flat();
 
 export default definePlugin({
@@ -105,9 +131,7 @@ export default definePlugin({
                 }
                 if (message.sticker_items) {
                     for (const sticker of message.sticker_items) {
-                        const stickerNameLower = sticker.name.toLowerCase();
-                        const aliases = KEYWORD_ALIASES[key] ?? [];
-                        if (stickerNameLower.includes(key) || aliases.some(alias => stickerNameLower.includes(alias.toLowerCase()))) {
+                        if (nameMatchesKeyword(sticker.name, key, KEYWORD_ALIASES[key] ?? [])) {
                             matchCount++;
                         }
                     }
@@ -123,22 +147,19 @@ export default definePlugin({
         MESSAGE_REACTION_ADD({ optimistic, channelId, userId, messageAuthorId, emoji }: IReactionAdd) {
             if (optimistic || (settings.store.ignoreBots && UserStore.getUser(userId)?.bot) || (settings.store.ignoreBlocked && RelationshipStore.isBlocked(messageAuthorId)) || channelId !== SelectedChannelStore.getChannelId()) return;
 
-            const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
+
                 if (key !== "momoi" && settings.store.triggerToggles[key]) continue;
-                const aliases = KEYWORD_ALIASES[key] ?? [];
-                if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
+                if (nameMatchesKeyword(emoji.name, key, KEYWORD_ALIASES[key] ?? [])) {
                     playKeyword(key);
                 }
             }
         },
         VOICE_CHANNEL_EFFECT_SEND({ emoji }: IVoiceChannelEffectSendEvent) {
             if (!emoji?.name) return;
-            const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && settings.store.triggerToggles[key]) continue;
-                const aliases = KEYWORD_ALIASES[key] ?? [];
-                if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
+                if (nameMatchesKeyword(emoji.name, key, KEYWORD_ALIASES[key] ?? [])) {
                     playKeyword(key);
                 }
             }
