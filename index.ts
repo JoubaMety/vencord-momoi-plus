@@ -14,10 +14,46 @@ function makeRange(start: number, end: number, step: number): number[] {
     return arr;
 }
 
-// Helper function for repetitive regex patterns
+// Helper to build a case-insensitive pattern string, e.g., "aris" -> "[aA][rR][iI][sS]"
+function createCaseInsensitivePattern(keyword: string): string {
+    return keyword.split('').map(char => {
+        const lower = char.toLowerCase();
+        const upper = char.toUpperCase();
+        return lower === upper ? char : `[${lower}${upper}]`;
+    }).join('');
+}
+
+// Helper function to generate precise regex patterns that avoid partial word matches.
+// A keyword is only matched if it is not immediately followed by a lowercase letter.
+// So that "aru" does not match "haruna".
+// But poorly named stickers like "Mikaheart" won't match "Mika" either.
 function createKeywordRegex(keyword: string): RegExp {
-    const pattern = `(?::\\w*${keyword}\\w*:)|https?:\\/\\/(?:cdn\\.discordapp\\.com\\/emojis|media\\.discordapp\\.net\\/stickers)\\/\\d+\\.(?:png|webp|gif)\\?[^ ]*name=\\w*${keyword}\\w*`;
-    return new RegExp(pattern, "gi");
+    const caseInsensitiveKeyword = createCaseInsensitivePattern(keyword);
+    const boundaryPattern = `(?<![a-zA-Z])${caseInsensitiveKeyword}(?![a-z])`;
+
+    const shortcodePattern = `:[^:]*?${boundaryPattern}[^:]*?:`;
+    const urlPattern = `https?:\\/\\/(?:cdn\\.discordapp\\.com\\/emojis|media\\.discordapp\\.net\\/stickers)\\/\\d+\\.(?:png|webp|gif)\\?[^ ]*?name=[^&]*?${boundaryPattern}[^&]*`;
+    
+    const combinedPattern = `${shortcodePattern}|${urlPattern}`;
+    return new RegExp(combinedPattern, "g");
+}
+
+// Helper function to check for whole-word matches in names, respecting camelCase and underscores.
+function nameMatchesKeyword(name: string, keyword: string, aliases: string[]): boolean {
+    const allTerms = [keyword, ...aliases.map(a => a.toLowerCase())];
+    const nameLower = name.toLowerCase();
+
+    for (const term of allTerms) {
+        let startIndex = -1;
+        while ((startIndex = nameLower.indexOf(term, startIndex + 1)) !== -1) {
+            const beforeOk = startIndex === 0 || !/[a-z]/.test(name[startIndex - 1]);
+            const afterIndex = startIndex + term.length;
+            const afterOk = afterIndex === name.length || !/[a-z]/.test(name[afterIndex]);
+
+            if (beforeOk && afterOk) return true;
+        }
+    }
+    return false;
 }
 
 // Local type definitions
@@ -71,9 +107,8 @@ const settings = definePluginSettings({
     ...triggerToggles
 });
 
+// --- PLUGIN DEFINITION ---
 const customAuthors: PluginAuthor[] = [{ name: "Ni", id: 1145148101919n }];
-
-// Flatten all audio clips into a single array for random selection
 const ALL_EXTRA_SOUNDS = Object.values(EXTRA_KEYWORD_BASE64).flat();
 
 export default definePlugin({
@@ -90,11 +125,9 @@ export default definePlugin({
         }
     }],
     // Reference: https://github.com/JoubaMety/vencord-momoi-plus/commit/15d66176f881b1e72a0adc940d3572287ab8101a#diff-dcdc3e0b3362edb8fec2a51d3fa51f8fb8af8f70247e06d9887fa934834c9122R84
-
     getStartupSoundBase64(): string {
         const choice = settings.store.startupSound;
         let base64String: string | undefined;
-
         if (choice === "momoi") {
             const voices = Array.isArray(settings.store.voice) ? settings.store.voice : [settings.store.voice];
             base64String = voices.map(v => MOMOI_BASE64[v]).filter(Boolean)[0];
@@ -104,10 +137,8 @@ export default definePlugin({
             const randomIndex = Math.floor(Math.random() * allSounds.length);
             base64String = allSounds[randomIndex];
         }
-
         return base64String ? `data:audio/ogg;base64,${base64String}` : "";
     },
-
     flux: {
         async MESSAGE_CREATE({ optimistic, message, channelId }: IMessageCreate) {
             if (optimistic || message.state === "SENDING" || (settings.store.ignoreBots && message.author?.bot) || (settings.store.ignoreBlocked && RelationshipStore.isBlocked(message.author?.id)) || channelId !== SelectedChannelStore.getChannelId() || (!message.content && !message.sticker_items?.length)) return;
@@ -121,9 +152,7 @@ export default definePlugin({
                 }
                 if (message.sticker_items) {
                     for (const sticker of message.sticker_items) {
-                        const stickerNameLower = sticker.name.toLowerCase();
-                        const aliases = KEYWORD_ALIASES[key] ?? [];
-                        if (stickerNameLower.includes(key) || aliases.some(alias => stickerNameLower.includes(alias.toLowerCase()))) {
+                        if (nameMatchesKeyword(sticker.name, key, KEYWORD_ALIASES[key] ?? [])) {
                             matchCount++;
                         }
                     }
@@ -139,22 +168,18 @@ export default definePlugin({
         MESSAGE_REACTION_ADD({ optimistic, channelId, userId, messageAuthorId, emoji }: IReactionAdd) {
             if (optimistic || (settings.store.ignoreBots && UserStore.getUser(userId)?.bot) || (settings.store.ignoreBlocked && RelationshipStore.isBlocked(messageAuthorId)) || channelId !== SelectedChannelStore.getChannelId()) return;
 
-            const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-                const aliases = KEYWORD_ALIASES[key] ?? [];
-                if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
+                if (nameMatchesKeyword(emoji.name, key, KEYWORD_ALIASES[key] ?? [])) {
                     playKeyword(key);
                 }
             }
         },
         VOICE_CHANNEL_EFFECT_SEND({ emoji }: IVoiceChannelEffectSendEvent) {
             if (!emoji?.name) return;
-            const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-                const aliases = KEYWORD_ALIASES[key] ?? [];
-                if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
+                if (nameMatchesKeyword(emoji.name, key, KEYWORD_ALIASES[key] ?? [])) {
                     playKeyword(key);
                 }
             }
