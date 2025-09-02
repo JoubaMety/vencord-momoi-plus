@@ -1,0 +1,44 @@
+/* stylelint-disable rule-empty-line-before */
+/* stylelint-disable selector-class-pattern */
+
+.vc-momoiPlus-CharacterList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    justify-content: center;
+    padding-top: 1em;
+    padding-bottom: 1em;
+    overflow-y: auto;
+}
+
+.vc-momoiPlus-Character {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5em;
+    width: 80px;
+    padding: 10px 0;
+    text-align: center;
+    background-color: var(--background-feedback-info);
+    outline: 2px solid var(--text-feedback-info);
+    color: inherit;
+    transition: background-color 0.2s ease, outline 0.2s ease, color 0.2s ease;
+    border-radius: 10%;
+
+    img {
+        border-radius: 10%;
+        width: 40px;
+        height: 40px;
+    }
+}
+
+.vc-momoiPlus-Character.disabled {
+    background-color: transparent;
+    outline: 0;
+    color: var(--interactive-muted);
+    transition: background-color 0.2s ease, outline 0.2s ease, color 0.2s ease;
+    img {
+        opacity: 0.75;
+        transition: opacity 0.2s ease;
+    }
+}

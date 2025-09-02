@@ -1,0 +1,16 @@
+export const ICON_BASE64: Record<string, string> = {
+    "shiroko": "https://cdn.discordapp.com/emojis/797265287924940802.webp?size=240",
+    "moyai": "https://discord.com/assets/845fa5845c2e5e7d.svg",
+    "reisa": "https://cdn.discordapp.com/emojis/1173801923397304432.webp?size=240",
+    "momoi": "https://cdn.discordapp.com/emojis/827820317085925397.webp?size=240",
+    "nozomi": "https://cdn.discordapp.com/emojis/1268592352679694469.webp?size=240&animated=true",
+    "hikari": "https://cdn.discordapp.com/emojis/1368323220683624539.webp?size=240&animated=true",
+    "aoba": "https://discord.com/assets/ead410f7f5d404c3.svg",
+    "miyu": "https://cdn.discordapp.com/emojis/1128992106313154560.webp?size=240",
+    "koyuki": "https://cdn.discordapp.com/emojis/1263453091727016150.webp?size=240",
+    "aris": "https://cdn.discordapp.com/emojis/822711369824600064.webp?size=240",
+    "aru": "https://cdn.discordapp.com/emojis/808964854928113704.webp?size=240",
+    "arona": "https://cdn.discordapp.com/emojis/796989272720539648.webp?size=240",
+    "atsuko": "https://cdn.discordapp.com/emojis/1223879050054078574.webp?size=240",
+    "mika": "https://cdn.discordapp.com/emojis/984501036326744155.webp?size=240",
+};
