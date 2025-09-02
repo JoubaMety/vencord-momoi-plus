@@ -15,21 +15,46 @@ function makeRange(start: number, end: number, step: number): number[] {
 }
 
 // Local type definitions
-type Message = { id: string; content: string; author?: { id: string; bot?: boolean; }; state?: string; };
+type StickerItem = {
+    id: string;
+    name: string;
+    format_type: number;
+};
+type Message = { 
+    id: string; 
+    content: string; 
+    author?: { id: string; bot?: boolean; }; 
+    state?: string; 
+    sticker_items?: StickerItem[];
+};
 type ReactionEmoji = { id?: string; name: string; animated?: boolean; };
 interface IMessageCreate { type: "MESSAGE_CREATE"; optimistic: boolean; channelId: string; message: Message; }
 interface IReactionAdd { type: "MESSAGE_REACTION_ADD"; optimistic: boolean; channelId: string; userId: string; messageAuthorId: string; emoji: ReactionEmoji; }
 interface IVoiceChannelEffectSendEvent { type: string; emoji?: ReactionEmoji; }
 
 const KEYWORD_REGEX: Record<string, RegExp> = {
-    momoi: /(?::\w*momoi\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*momoi\w*/gi,
-    reisa: /(?::\w*reisa\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*reisa\w*/gi,
-    nozomi: /(?::\w*nozomi\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*nozomi\w*/gi,
-    hikari: /(?::\w*hikari\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*hikari\w*/gi,
-    aoba: /(?::\w*aoba\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*aoba\w*/gi,
-    miyu: /(?::\w*miyu\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*miyu\w*/gi,
-    koyuki: /(?::\w*koyuki\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*koyuki\w*/gi,
-    aris: /(?::\w*aris\w*:)|https?:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*aris\w*/gi
+    momoi: /(?::\w*momoi\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*momoi\w*/gi,
+    reisa: /(?::\w*reisa\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*reisa\w*/gi,
+    nozomi: /(?::\w*nozomi\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*nozomi\w*/gi,
+    hikari: /(?::\w*hikari\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*hikari\w*/gi,
+    aoba: /(?::\w*aoba\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*aoba\w*/gi,
+    miyu: /(?::\w*miyu\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*miyu\w*/gi,
+    koyuki: /(?::\w*koyuki\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*koyuki\w*/gi,
+    aris: /(?::\w*aris\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*aris\w*/gi,
+    moyai: /(?::\w*moyai\w*:)|https?:\/\/(?:cdn\.discordapp\.com\/emojis|media\.discordapp\.net\/stickers)\/\d+\.(?:png|webp|gif)\?[^ ]*name=\w*moyai\w*/gi
+};
+
+// Aliases for keywords, especially for non-English names. 
+const KEYWORD_ALIASES: Record<string, string[]> = {
+    momoi: ["モモイ"],
+    reisa: ["レイサ"],
+    nozomi: ["ノゾミ"],
+    hikari: ["ヒカリ"],
+    aoba: ["アオバ"],
+    miyu: ["ミユ"],
+    koyuki: ["コユキ"],
+    aris: ["アリス"],
+    moyai: ["モアイ"]
 };
 
 const settings = definePluginSettings({
@@ -44,7 +69,8 @@ const settings = definePluginSettings({
     enableAoba: { description: "Enable Aoba trigger", type: OptionType.BOOLEAN, default: true },
     enableMiyu: { description: "Enable Miyu trigger", type: OptionType.BOOLEAN, default: true },
     enableKoyuki: { description: "Enable Koyuki trigger", type: OptionType.BOOLEAN, default: true },
-    enableAris: { description: "Enable Aris trigger", type: OptionType.BOOLEAN, default: true }
+    enableAris: { description: "Enable Aris trigger", type: OptionType.BOOLEAN, default: true },
+    enableMoyai: { description: "Enable Moyai trigger", type: OptionType.BOOLEAN, default: true }
 });
 
 const customAuthors: PluginAuthor[] = [{ name: "Ni", id: 1145148101919n }];
@@ -59,14 +85,39 @@ export default definePlugin({
             if (optimistic || message.state === "SENDING") return;
             if (settings.store.ignoreBots && message.author?.bot) return;
             if (settings.store.ignoreBlocked && RelationshipStore.isBlocked(message.author?.id)) return;
-            if (!message.content || channelId !== SelectedChannelStore.getChannelId()) return;
+            if (channelId !== SelectedChannelStore.getChannelId()) return;
+
+            // An empty message can still have stickers, so we check both
+            if (!message.content && !message.sticker_items?.length) return;
+
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-                
-                const regex = KEYWORD_REGEX[key];
-                const matches = message.content.match(regex);
-                if (matches) {
-                    for (let i = 0; i < matches.length; i++) {
+
+                let matchCount = 0;
+
+                // 1. Check message content for emojis and emoji/sticker URLs
+                if (message.content) {
+                    const regex = KEYWORD_REGEX[key];
+                    const contentMatches = message.content.match(regex);
+                    if (contentMatches) {
+                        matchCount += contentMatches.length;
+                    }
+                }
+
+                // 2. Check sticker names from the dedicated sticker data field
+                if (message.sticker_items) {
+                    for (const sticker of message.sticker_items) {
+                        const stickerNameLower = sticker.name.toLowerCase();
+                        const aliases = KEYWORD_ALIASES[key] ?? [];
+                        if (stickerNameLower.includes(key) || aliases.some(alias => stickerNameLower.includes(alias.toLowerCase()))) {
+                            matchCount++;
+                        }
+                    }
+                }
+
+                // 3. Play sound for all matches found
+                if (matchCount > 0) {
+                    for (let i = 0; i < matchCount; i++) {
                         playKeyword(key);
                         await sleep(300);
                     }
@@ -78,10 +129,15 @@ export default definePlugin({
             if (settings.store.ignoreBots && UserStore.getUser(userId)?.bot) return;
             if (settings.store.ignoreBlocked && RelationshipStore.isBlocked(messageAuthorId)) return;
             if (channelId !== SelectedChannelStore.getChannelId()) return;
+            
             const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-                if (name.includes(key)) playKeyword(key);
+                
+                const aliases = KEYWORD_ALIASES[key] ?? [];
+                if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
+                    playKeyword(key);
+                }
             }
         },
         VOICE_CHANNEL_EFFECT_SEND({ emoji }: IVoiceChannelEffectSendEvent) {
@@ -89,12 +145,17 @@ export default definePlugin({
             const name = emoji.name.toLowerCase();
             for (const key of Object.keys(KEYWORD_REGEX)) {
                 if (key !== "momoi" && !settings.store[`enable${key.charAt(0).toUpperCase() + key.slice(1)}`]) continue;
-                if (name.includes(key)) playKeyword(key);
+
+                const aliases = KEYWORD_ALIASES[key] ?? [];
+                if (name.includes(key) || aliases.some(alias => name.includes(alias.toLowerCase()))) {
+                    playKeyword(key);
+                }
             }
         }
     }
 });
 
+// The playback function
 async function playKeyword(key: string) {
     if (!settings.store.triggerWhenUnfocused && !document.hasFocus()) return;
 
@@ -123,7 +184,6 @@ async function playKeyword(key: string) {
             audio.src = blobUrl;
             audio.volume = settings.store.volume;
 
-            // Revoke the object URL once the audio has finished to free up memory
             audio.onended = () => URL.revokeObjectURL(blobUrl);
             audio.onerror = () => URL.revokeObjectURL(blobUrl);
 
