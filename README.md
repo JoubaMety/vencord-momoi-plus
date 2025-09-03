@@ -5,16 +5,23 @@ A [Vencord](https://vencord.dev/) plugin that plays audio; voice lines of charac
 
 ## Installation
 ### Via standalone script
-#### Windows
+#### Windows (x64)
 * You can run following script via PowerShell like this:
   ```ps
-  irm "https://raw.githubusercontent.com/ddddjBlue/vencord-momoi-plus/refs/heads/main/user-install.ps1" | iem
+  iex ((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/ddddjBlue/vencord-momoi-plus/refs/heads/main/user-install.ps1"))
   ```
-* At the end of it, you'll be asked to choose which Discord installation to patch.
-### Manually
+* At the end of it, you'll be asked to choose which Discord installation to patch with further instructions on how to enable plugin inside Discord.
+#### Notes
+* This script doesn't actually install `git`, `node` nor `pnpm`, rather it downloads binaries (and it's required helper files) & stores them in `%TEMP%` folder, circumventing having to deal with CLI installations or worse, GUI installations.
+### Manually (build)
+#### Prerequisites
+* [`git`](https://git-scm.com/downloads)
+* [`node`](https://nodejs.org/en/download)
+* [`pnpm`](https://pnpm.io/installation)
+
 1. Get [source code](https://github.com/Vendicated/Vencord) of Vencord.
 2. In `{path-to-your-source}\src\userplugins\{folder-of-your-choice}\`: place `index.ts` and `audioData.ts`
-3. With [pnpm](https://pnpm.io/installation) via terminal (Powershell and such), install dependecies
+3. With `pnpm` via terminal (Powershell and such), install dependecies
    ```ps
    pnpm install
    ```
@@ -27,7 +34,8 @@ A [Vencord](https://vencord.dev/) plugin that plays audio; voice lines of charac
    pnpm inject
    ```
    * At the end of it, you'll be asked to choose which Discord installation to patch.
-6. Enjoy.
+6. Start Discord, go to `Settings` > `Vencord - Plugins`, find MomoiPlus and enable it, then restart Discord.
+7. Enjoy!
 
 <br>
 
