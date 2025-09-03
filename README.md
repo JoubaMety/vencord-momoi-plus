@@ -19,19 +19,29 @@ A [Vencord](https://vencord.dev/) plugin that plays audio; voice lines of charac
 * [`node`](https://nodejs.org/en/download)
 * [`pnpm`](https://pnpm.io/installation)
 
-1. Get [source code](https://github.com/Vendicated/Vencord) of Vencord.
-2. In `{path-to-your-source}\src\userplugins\{folder-of-your-choice}\`: place `index.ts` and `audioData.ts`
-3. With `pnpm` via terminal (Powershell and such), install dependecies
-   ```ps
-   pnpm install
+1. Clone Vencord's source code repository
+   ```sh
+   $ git clone https://github.com/Vendicated/Vencord.git
+   ```
+2. Navigate to `src`, create new folder `userplugins` & clone MomoiPlus's  repository
+   ```sh
+   $ cd src
+   $ mkdir userplugins
+   $ cd userplugins
+   $ git clone https://github.com/ddddjBlue/vencord-momoi-plus.git
+   ```
+3. Go back to root directory of Vencord's repository & install dependencies
+   ```sh
+   $ cd ..\..\.
+   $ pnpm install
    ```
 4. Build Vencord.
-   ```ps
-   pnpm build
+   ```sh
+   $ pnpm build
    ```
 5. Inject Discord with Vencord
-   ```ps
-   pnpm inject
+   ```sh
+   $ pnpm inject
    ```
    * At the end of it, you'll be asked to choose which Discord installation to patch.
 6. Start Discord, go to `Settings` > `Vencord - Plugins`, find MomoiPlus and enable it, then restart Discord.
