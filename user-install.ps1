@@ -43,10 +43,12 @@ else {
 # if defaultInstallPath folder doesn't exist, create one
 if (-not (Test-Path -Path $defaultInstallPath)) {
     if ($gitInstalled) {
-        git clone $links.vencordGit $defaultInstallPath && Write-Message "Cloned Vencord repository to $defaultInstallPath"
+        git clone $links.vencordGit $defaultInstallPath
+        Write-Message "Cloned Vencord repository to $defaultInstallPath"
     }
     else {
-        New-Item -ItemType Directory -Path $defaultInstallPath && Write-Message "Created directory $defaultInstallPath"
+        New-Item -ItemType Directory -Path $defaultInstallPath
+        Write-Message "Created directory $defaultInstallPath"
     }
 }
 # If git is not installed, download the release zip and extract it to /dist
@@ -75,15 +77,18 @@ else {
 
 # Check if folder userplugins exists
 if (-not (Test-Path -Path "$defaultInstallPath\src\userplugins")) {
-    New-Item -ItemType Directory -Path "$defaultInstallPath\src\userplugins" && Write-Message "Created directory $defaultInstallPath\src\userplugins"
+    New-Item -ItemType Directory -Path "$defaultInstallPath\src\userplugins"
+    Write-Message "Created directory $defaultInstallPath\src\userplugins"
 }
 # Check if momoiPlus is already installed
 if (-not (Test-Path -Path $momoiPlusPath)) {
     if ($gitInstalled) {
-        git clone $links.momoiPlusGit $momoiPlusPath && Write-Message "Cloned MomoiPlus repository to $momoiPlusPath"
+        git clone $links.momoiPlusGit $momoiPlusPath
+        Write-Message "Cloned MomoiPlus repository to $momoiPlusPath"
     }
     else {
-        New-Item -ItemType Directory -Path $momoiPlusPath && Write-Message "Created directory $momoiPlusPath"
+        New-Item -ItemType Directory -Path $momoiPlusPath
+        Write-Message "Created directory $momoiPlusPath"
         Invoke-WebRequest -Uri $links.momoiPlusRelease -OutFile "$momoiPlusPath\MomoiPlusRelease.zip"
         Expand-Archive -Path "$momoiPlusPath\MomoiPlusRelease.zip" -DestinationPath "$momoiPlusPath" -Force
         Remove-Item -Path "$momoiPlusPath\MomoiPlusRelease.zip" -Force
@@ -106,12 +111,16 @@ else {
 # Install dependencies using pnpm
 Set-Location -Path "$defaultInstallPath"
 Write-Message "Installing dependencies using pnpm..."
-pnpm install && Write-Message "Dependencies installed successfully."
+pnpm install
+Write-Message "Dependencies installed successfully."
 # Build Vencord
 Write-Message "Building Vencord..."
-pnpm build && Write-Message "Vencord built successfully."
+pnpm build
+Write-Message "Vencord built successfully."
 # Inject Vencord
 Write-Message "Injecting Vencord..."
-pnpm inject && Write-Message "Vencord injected successfully." && Write-Host "Life... is Kuyashi."
+pnpm inject
+Write-Message "Vencord injected successfully."
+Write-Host "Life... is Kuyashi."
 # Return to original location
 Set-Location -Path $_originalContext
