@@ -105,18 +105,23 @@ export default definePlugin({
                 predicate: () => settings.store.startupSound !== "none"
             }
         },
-        // TODO: fix start-up volume
-        /*
         {
-            find: '("discodo",e);return t.volume=1,t}',
-            replacement: [
-                {
-                    match: /\("discodo",e\);return t\.volume=1,t\}/g,
-                    replace: '("discodo",e);return t.volume=0,t}'
-                }
-            ]
+            // Targets the audio element creation and volume setting
+            find: /\("discodo",(\w+)\);return (\w+)\.volume=1,\2\}/,
+            replacement: {
+                match: /\("discodo",(\w+)\);return (\w+)\.volume=1,\2\}/,
+                replace: '("discodo",$1);return $2.volume=window.$getMomoiVolume(),$2}'
+            }
         },
-        */
+        {
+            // This targets: this._connectedSound.volume = 1
+            // Stopping the Constructor from resetting it to 1
+            find: "this._connectedSound.volume=1",
+            replacement: {
+                match: /this\._connectedSound\.volume=1/g,
+                replace: "this._connectedSound.volume=window.$getMomoiVolume()"
+            }
+        }
     ],
     flux: {
         async MESSAGE_CREATE({ optimistic, message, channelId }: IMessageCreate) {
@@ -213,3 +218,9 @@ async function playKeyword(key: string) {
         console.error(`[MomoiPlus] Error playing Base64 audio for key ${key}:`, error);
     }
 }
+
+(window as any).$getMomoiVolume = () => {
+    const vol = settings.store.volume;
+    console.log("[MomoiPlus] Startup volume set to:", vol); 
+    return (typeof vol === 'number') ? vol : 0.5;
+};

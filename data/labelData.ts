@@ -24,4 +24,6 @@ export const labels: Record<string, string> = {
     "arona": "Arona",
     "atsuko": "Atsuko",
     "mika": "Mika",
+    "yuuka": "Yuuka",
+    "koharu": "Koharu"
 };

@@ -5,7 +5,8 @@
  */
 
 import { classNameFactory } from "@api/Styles";
-import { Clickable, Flex, Text } from "@webpack/common";
+import { Flex } from "@components/Flex";
+import { Clickable, Text } from "@webpack/common";
 
 import { ICON_BASE64 } from "../data/iconData";
 import { toggleableKeywords } from "../data/keywordData";
@@ -57,5 +58,3 @@ export function ExtrasComponent() {
         </div>
     );
 }
-
-

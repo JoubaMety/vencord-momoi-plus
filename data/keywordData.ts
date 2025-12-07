@@ -22,7 +22,7 @@ function createKeywordRegex(keyword: string): RegExp {
 }
 
 // All standard keywords
-export const standardKeywords = [ "momoi", "reisa", "nozomi", "hikari", "aoba", "miyu", "koyuki", "aris", "aru", "arona", "atsuko", "mika", "shiroko" ];
+export const standardKeywords = [ "momoi", "reisa", "nozomi", "hikari", "aoba", "miyu", "koyuki", "aris", "aru", "arona", "atsuko", "mika", "shiroko", "koharu", "yuuka" ];
 
 // Build the regex map from the list of keywords
 export const KEYWORD_REGEX: Record<string, RegExp> = standardKeywords.reduce((acc, keyword) => {
@@ -35,7 +35,7 @@ const moyaiPattern = createCaseInsensitivePattern("moy?ai");
 KEYWORD_REGEX.moyai = new RegExp(`🗿|:[^:]*?${moyaiPattern}[^:]*?:|https?:\\/\\/(?:cdn\\.discordapp\\.com\\/emojis|media\\.discordapp\\.net\\/stickers)\\/\\d+\\.(?:png|webp|gif)\\?[^ ]*?name=[^&]*?${moyaiPattern}[^&]*`, "g");
 
 export const KEYWORD_ALIASES: Record<string, string[]> = {
-    momoi: ["モモイ"], reisa: ["レイサ"], nozomi: ["ノゾミ"], hikari: ["ヒカリ"], aoba: ["アオバ"], miyu: ["ミユ"], koyuki: ["コユキ"], aris: ["アリス"], aru: ["アル"], arona: ["アロナ"], atsuko: ["アツコ"], mika: ["ミカ"], shiroko: ["シロコ"], moyai: ["モアイ", "moai", "🗿"]
+    momoi: ["モモイ"], reisa: ["レイサ"], nozomi: ["ノゾミ"], hikari: ["ヒカリ"], aoba: ["アオバ"], miyu: ["ミユ"], koyuki: ["コユキ"], aris: ["アリス"], aru: ["アル"], arona: ["アロナ"], atsuko: ["アツコ"], mika: ["ミカ"], shiroko: ["シロコ"], yuuka: ["ユウカ"], koharu: ["コハル"], moyai: ["モアイ", "moai", "🗿"]
 };
 
 export const toggleableKeywords = Object.keys(KEYWORD_REGEX).filter(k => k !== 'momoi');
