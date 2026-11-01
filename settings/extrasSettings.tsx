@@ -6,7 +6,8 @@
 
 import { classNameFactory } from "@api/Styles";
 import { Flex } from "@components/Flex";
-import { Clickable, Text } from "@webpack/common";
+import { Clickable } from "@webpack/common";
+import { Text } from "@components/Text";
 
 import { ICON_BASE64 } from "../data/iconData";
 import { toggleableKeywords } from "../data/keywordData";
